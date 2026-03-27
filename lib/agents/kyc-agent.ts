@@ -1,23 +1,37 @@
 // ============================================================================
 // KYC VERIFICATION AGENT
-// Path: loan-agent-system/lib/agents/kyc-agent.ts
 // ============================================================================
 
 import { verifyKYC, calculateAge } from '@/lib/mock-data/kyc-database';
 import { KYCVerificationResult } from '@/types';
 import { isValidPAN } from '@/lib/utils/calculations';
+import { getAdminClient } from '@/lib/supabase/admin';
 
-/**
- * KYC Verification Agent
- * Verifies PAN and fetches customer details from mock database
- */
+type SupabaseKYCRecord = {
+  pan_number: string;
+  full_name: string;
+  date_of_birth: string;
+  kyc_status: 'VERIFIED' | 'PENDING_AADHAAR_LINK' | 'BLOCKED' | 'FAILED';
+  phone: string;
+};
+
 export class KYCAgent {
-  /**
-   * Verify customer KYC using PAN number
-   */
+  private async fetchFromSupabase(pan: string): Promise<SupabaseKYCRecord | null> {
+    const admin = getAdminClient();
+    if (!admin) return null;
+
+    const { data, error } = await admin
+      .from('kyc_profiles')
+      .select('pan_number, full_name, date_of_birth, kyc_status, phone')
+      .eq('pan_number', pan)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return data as SupabaseKYCRecord;
+  }
+
   async verify(pan: string): Promise<KYCVerificationResult> {
     try {
-      // Validate PAN format
       if (!isValidPAN(pan)) {
         return {
           success: false,
@@ -25,8 +39,9 @@ export class KYCAgent {
         };
       }
 
-      // Fetch from mock database
-      const record = await verifyKYC(pan);
+      const normalizedPAN = pan.toUpperCase();
+      const supabaseRecord = await this.fetchFromSupabase(normalizedPAN);
+      const record = supabaseRecord ?? (await verifyKYC(normalizedPAN));
 
       if (!record) {
         return {
@@ -35,7 +50,6 @@ export class KYCAgent {
         };
       }
 
-      // Check KYC status
       if (record.kyc_status !== 'VERIFIED') {
         return {
           success: false,
@@ -43,7 +57,6 @@ export class KYCAgent {
         };
       }
 
-      // Calculate age
       const age = calculateAge(record.date_of_birth);
 
       return {
@@ -54,7 +67,7 @@ export class KYCAgent {
           date_of_birth: record.date_of_birth,
           age,
           phone: record.phone,
-          kyc_status: record.kyc_status,
+          kyc_status: 'VERIFIED',
         },
       };
     } catch (error) {
@@ -66,15 +79,12 @@ export class KYCAgent {
     }
   }
 
-  /**
-   * Generate natural language response for KYC verification result
-   */
   generateResponse(result: KYCVerificationResult): string {
     if (!result.success) {
-      return `❌ ${result.error}`;
+      return `Error: ${result.error}`;
     }
 
     const { full_name } = result.data!;
-    return `✅ KYC Verified successfully!\n\nWelcome, ${full_name}! Your details have been verified. Let's continue with your loan application.`;
+    return `KYC verified successfully. Welcome, ${full_name}. Let's continue with your loan application.`;
   }
 }

@@ -1,23 +1,40 @@
 // ============================================================================
 // CREDIT ASSESSMENT AGENT
-// Path: loan-agent-system/lib/agents/credit-agent.ts
 // ============================================================================
 
 import { fetchCreditScore, getCreditScoreBand } from '@/lib/mock-data/credit-database';
 import { CreditCheckResult } from '@/types';
+import { getAdminClient } from '@/lib/supabase/admin';
 
-/**
- * Credit Assessment Agent
- * Fetches credit score and analyzes creditworthiness
- */
+type SupabaseCreditRecord = {
+  pan_number: string;
+  score: number;
+  status: string;
+  active_loans: number;
+  credit_history_years: number;
+  defaults: number;
+};
+
 export class CreditAgent {
-  /**
-   * Fetch and analyze credit score using PAN
-   */
+  private async fetchFromSupabase(pan: string): Promise<SupabaseCreditRecord | null> {
+    const admin = getAdminClient();
+    if (!admin) return null;
+
+    const { data, error } = await admin
+      .from('credit_profiles')
+      .select('pan_number, score, status, active_loans, credit_history_years, defaults')
+      .eq('pan_number', pan)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return data as SupabaseCreditRecord;
+  }
+
   async checkCredit(pan: string): Promise<CreditCheckResult> {
     try {
-      // Fetch from mock credit bureau
-      const creditRecord = await fetchCreditScore(pan);
+      const normalizedPAN = pan.toUpperCase();
+      const supabaseRecord = await this.fetchFromSupabase(normalizedPAN);
+      const creditRecord = supabaseRecord ?? (await fetchCreditScore(normalizedPAN));
 
       if (!creditRecord) {
         return {
@@ -33,9 +50,10 @@ export class CreditAgent {
           status: creditRecord.status,
           active_loans: creditRecord.active_loans,
           credit_history_years: creditRecord.credit_history_years,
-          defaults: creditRecord.defaults > 0 
-            ? `${creditRecord.defaults} default(s) in past 2 years` 
-            : 'No defaults',
+          defaults:
+            creditRecord.defaults > 0
+              ? `${creditRecord.defaults} default(s) in past 2 years`
+              : 'No defaults',
         },
       };
     } catch (error) {
@@ -47,34 +65,17 @@ export class CreditAgent {
     }
   }
 
-  /**
-   * Generate natural language response for credit check result
-   */
   generateResponse(result: CreditCheckResult): string {
     if (!result.success) {
-      return `❌ ${result.error}`;
+      return `Error: ${result.error}`;
     }
 
     const { score, status, active_loans, credit_history_years } = result.data!;
     const band = getCreditScoreBand(score);
 
-    let emoji = '✅';
-    if (score < 650) emoji = '⚠️';
-    else if (score < 700) emoji = '🟡';
-
-    return `${emoji} Credit Score: ${score} (${band})
-    
-📊 Credit Assessment:
-• Status: ${status}
-• Active Loans: ${active_loans}
-• Credit History: ${credit_history_years} years
-
-Your credit profile has been analyzed successfully!`;
+    return `Credit Score: ${score} (${band})\n\nCredit Assessment:\n- Status: ${status}\n- Active Loans: ${active_loans}\n- Credit History: ${credit_history_years} years\n\nYour credit profile has been analyzed successfully.`;
   }
 
-  /**
-   * Evaluate if credit score meets minimum requirements
-   */
   meetsMinimumRequirement(score: number): boolean {
     return score >= 650;
   }

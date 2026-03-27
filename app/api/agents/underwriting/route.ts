@@ -1,53 +1,49 @@
-// ============================================================================
-// UNDERWRITING API ENDPOINT
-// Path: loan-agent-system/app/api/agents/underwriting/route.ts
-// ============================================================================
-
 import { NextRequest, NextResponse } from 'next/server';
 import { UnderwritingAgent } from '@/lib/agents/underwriting-agent';
 import { LoanApplicationData } from '@/types';
 import { createClient } from '@/lib/supabase/server';
 import { v4 as uuidv4 } from 'uuid';
+import { rateLimit } from '@/lib/utils/rate-limit';
 
 export const runtime = 'edge';
 
-/**
- * POST /api/agents/underwriting
- * Evaluate loan application and make approval decision
- */
+function getClientIp(request: NextRequest): string {
+  const forwardedFor = request.headers.get('x-forwarded-for') || 'unknown';
+  return forwardedFor.split(',')[0].trim();
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const limit = rateLimit(`underwriting:${ip}`, 15, 60_000);
+    if (!limit.allowed) {
+      return NextResponse.json({ error: 'Too many requests', retryAfterMs: limit.retryAfterMs }, { status: 429 });
+    }
+
     const body = await request.json();
     const { loanData, userId } = body;
 
-    // Validate input
     if (!loanData || typeof loanData !== 'object') {
-      return NextResponse.json(
-        { error: 'Loan data is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Loan data is required' }, { status: 400 });
     }
 
-    // Initialize underwriting agent
     const underwritingAgent = new UnderwritingAgent();
-
-    // Evaluate loan application
     const decision = underwritingAgent.evaluate(loanData as LoanApplicationData);
+    const responseMessage = underwritingAgent.generateResponse(decision, loanData.full_name || 'Customer');
 
-    // Generate response message
-    const responseMessage = underwritingAgent.generateResponse(
-      decision,
-      loanData.full_name || 'Customer'
-    );
-
-    // Save to database if user is authenticated
     let applicationId: string | null = null;
 
     if (userId) {
       try {
         const supabase = await createClient();
-        
-        // Create or update loan application
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user || user.id !== userId) {
+          return NextResponse.json({ error: 'Unauthorized user context' }, { status: 401 });
+        }
+
         const applicationData = {
           id: uuidv4(),
           user_id: userId,
@@ -91,21 +87,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate counter offer for rejected applications
     let counterOffer = null;
     if (!decision.approved) {
-      const counterOfferAmount = underwritingAgent.calculateCounterOffer(
-        loanData as LoanApplicationData
-      );
+      const counterOfferAmount = underwritingAgent.calculateCounterOffer(loanData as LoanApplicationData);
       if (counterOfferAmount) {
         counterOffer = {
           amount: counterOfferAmount,
-          message: `We can offer up to ₹${counterOfferAmount.toLocaleString('en-IN')} instead.`,
+          message: `We can offer up to INR ${counterOfferAmount.toLocaleString('en-IN')} instead.`,
         };
       }
     }
 
-    // Return response
     return NextResponse.json({
       success: true,
       decision: decision.approved ? 'approved' : 'rejected',
@@ -114,33 +106,22 @@ export async function POST(request: NextRequest) {
       applicationId,
       counterOffer,
     });
-
   } catch (error) {
     console.error('Underwriting API Error:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to evaluate loan application',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to evaluate loan application', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
 }
 
-/**
- * GET /api/agents/underwriting/application/:id
- * Get loan application details
- */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('id');
 
     if (!applicationId) {
-      return NextResponse.json(
-        { error: 'Application ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Application ID is required' }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -151,22 +132,12 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (error || !data) {
-      return NextResponse.json(
-        { error: 'Application not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
-    return NextResponse.json({
-      success: true,
-      data,
-    });
-
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('Get Application Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch application' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch application' }, { status: 500 });
   }
 }

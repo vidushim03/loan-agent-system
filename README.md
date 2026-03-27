@@ -413,3 +413,46 @@ _Coming soon..._
 ---
 
 Made with care by Vidushi Maheshwari
+
+---
+
+## V2 Quality Upgrades
+
+This version includes production-oriented improvements beyond the initial prototype:
+
+- Real-data path: KYC and credit agents now check Supabase profile tables first, then fallback to mock datasets.
+- Security hardening: API input sanitization and per-endpoint rate limiting for chat, KYC, credit, and underwriting routes.
+- Auditability: stage transition history and conversation summaries are tracked in chat state and persisted in audit logs.
+- UX reliability: chat now has explicit loading, retry, error, and empty states with better mobile behavior.
+- Testing: unit tests for calculations and underwriting logic, plus integration test scaffolding for chat API flow.
+
+## Engineering Metrics
+
+Current measurable indicators in this repo:
+
+- Underwriting rule checks implemented: 5 core eligibility gates (age, income, credit, DTI, max eligible amount).
+- API protection coverage: rate limiting enabled on 4 high-traffic endpoints.
+- Test coverage by suite count: 2 unit suites + 1 integration suite scaffold.
+- Stateful flow coverage: full stage machine from greeting to decision (11 stages including completion).
+
+## Test Commands
+
+Run these from project root:
+
+```bash
+npm run test:unit
+npm run test:integration
+npm run test:all
+```
+
+Note: integration test expects a local server running at `http://localhost:3000`.
+
+## Supabase Data Tables for Real Profiles
+
+In addition to application and logs, this schema supports profile-backed checks:
+
+- `kyc_profiles`
+- `credit_profiles`
+- `agent_audit_logs`
+
+You can seed these tables with your own demo records and the system will use them before mock fallback.

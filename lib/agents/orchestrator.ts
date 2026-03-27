@@ -1,19 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// ============================================================================
-// ORCHESTRATOR - Routes user messages to appropriate agents
-// Path: loan-agent-system/lib/agents/orchestrator.ts
-// ============================================================================
 
-import { ConversationStage, OrchestratorInput, OrchestratorOutput, ChatMessage } from '@/types';
+import { ConversationStage, OrchestratorInput, OrchestratorOutput, ChatMessage, StageTransition } from '@/types';
 import { KYCAgent } from './kyc-agent';
 import { CreditAgent } from './credit-agent';
 import { UnderwritingAgent } from './underwriting-agent';
 import { v4 as uuidv4 } from 'uuid';
 
-/**
- * Orchestrator Agent
- * Routes user messages to appropriate worker agents
- */
 export class Orchestrator {
   private kycAgent: KYCAgent;
   private creditAgent: CreditAgent;
@@ -25,13 +17,9 @@ export class Orchestrator {
     this.underwritingAgent = new UnderwritingAgent();
   }
 
-  /**
-   * Process user message and route to appropriate agent
-   */
   async process(input: OrchestratorInput): Promise<OrchestratorOutput> {
     const { user_message, conversation_state } = input;
 
-    // Add user message to conversation
     const userMsg: ChatMessage = {
       id: uuidv4(),
       sender: 'user',
@@ -41,7 +29,6 @@ export class Orchestrator {
 
     const updatedMessages = [...conversation_state.messages, userMsg];
 
-    // Determine next action based on current stage
     let response = '';
     let newStage = conversation_state.stage;
     let updatedLoanData = { ...conversation_state.loan_data };
@@ -55,7 +42,7 @@ export class Orchestrator {
         newStage = 'collect_pan';
         break;
 
-      case 'collect_pan':
+      case 'collect_pan': {
         const panResult = await this.handlePANCollection(user_message);
         if (panResult.success && panResult.data) {
           updatedLoanData = {
@@ -74,37 +61,40 @@ export class Orchestrator {
           newStage = 'collect_pan';
         }
         break;
+      }
 
-      case 'collect_employment':
+      case 'collect_employment': {
         const empResult = await this.handleEmploymentCollection(user_message);
         updatedLoanData = { ...updatedLoanData, ...empResult.data };
         response = empResult.response;
         newStage = empResult.nextStage;
         break;
+      }
 
-      case 'collect_income':
+      case 'collect_income': {
         const incomeResult = await this.handleIncomeCollection(user_message);
         updatedLoanData = { ...updatedLoanData, ...incomeResult.data };
         response = incomeResult.response;
         newStage = incomeResult.nextStage;
         break;
+      }
 
-      case 'collect_loan_details':
+      case 'collect_loan_details': {
         const loanResult = await this.handleLoanDetailsCollection(user_message);
         updatedLoanData = { ...updatedLoanData, ...loanResult.data };
         response = loanResult.response;
         newStage = loanResult.nextStage;
         break;
+      }
 
-      case 'collect_existing_obligations':
+      case 'collect_existing_obligations': {
         const emiResult = await this.handleEMICollection(user_message);
         updatedLoanData = { ...updatedLoanData, ...emiResult.data };
         response = emiResult.response;
         newStage = emiResult.nextStage;
 
-        // After collecting all data, fetch credit score
-        if (newStage === 'underwriting') {
-          const creditResult = await this.creditAgent.checkCredit(updatedLoanData.pan_number!);
+        if (newStage === 'underwriting' && updatedLoanData.pan_number) {
+          const creditResult = await this.creditAgent.checkCredit(updatedLoanData.pan_number);
           if (creditResult.success && creditResult.data) {
             updatedLoanData.credit_score = creditResult.data.score;
             updatedLoanData.credit_status = creditResult.data.status;
@@ -112,17 +102,17 @@ export class Orchestrator {
             creditChecked = true;
 
             response += '\n\n' + this.creditAgent.generateResponse(creditResult);
-            response += '\n\n⏳ Analyzing your application...';
+            response += '\n\nAnalyzing your application...';
             agentUsed = 'credit';
           }
         }
         break;
+      }
 
-      case 'underwriting':
-        // Make underwriting decision
+      case 'underwriting': {
         const decision = this.underwritingAgent.evaluate(updatedLoanData);
         response = this.underwritingAgent.generateResponse(decision, updatedLoanData.full_name || 'Customer');
-        
+
         if (decision.approved) {
           updatedLoanData.sanctioned_amount = decision.sanctioned_amount;
           updatedLoanData.interest_rate = decision.interest_rate;
@@ -133,19 +123,29 @@ export class Orchestrator {
         }
         agentUsed = 'underwriting';
         break;
+      }
 
       case 'approved':
       case 'rejected':
-        response = 'Your application has been processed. Thank you for using QuickLoan!';
+        response = 'Your application has been processed. Thank you for using QuickLoan.';
         newStage = 'completed';
         break;
 
       default:
-        response = 'I apologize, but something went wrong. Let me help you start a new application.';
+        response = 'Something went wrong. Let us start a new application.';
         newStage = 'greeting';
     }
 
-    // Add agent response to conversation
+    const transition: StageTransition = {
+      from_stage: conversation_state.stage,
+      to_stage: newStage,
+      agent_used: agentUsed,
+      timestamp: new Date().toISOString(),
+    };
+
+    const stageHistory = [...(conversation_state.stage_history ?? []), transition];
+    const conversationSummary = this.buildSummary(updatedLoanData, stageHistory);
+
     const agentMsg: ChatMessage = {
       id: uuidv4(),
       sender: 'agent',
@@ -167,36 +167,44 @@ export class Orchestrator {
         messages: finalMessages,
         kyc_verified: kycVerified,
         credit_checked: creditChecked,
+        stage_history: stageHistory,
+        conversation_summary: conversationSummary,
       },
       agent_used: agentUsed,
     };
   }
 
-  // ========== Stage Handlers ==========
+  private buildSummary(loanData: Record<string, any>, stageHistory: StageTransition[]): string {
+    const latest = stageHistory.slice(-4).map((s) => `${s.from_stage}->${s.to_stage}`).join(', ');
+    const parts = [
+      loanData.full_name ? `Name: ${loanData.full_name}` : null,
+      loanData.pan_number ? `PAN: ${loanData.pan_number}` : null,
+      loanData.employment_type ? `Employment: ${loanData.employment_type}` : null,
+      loanData.monthly_income ? `Income: INR ${loanData.monthly_income}` : null,
+      loanData.loan_amount_requested ? `Requested: INR ${loanData.loan_amount_requested}` : null,
+      loanData.credit_score ? `Credit: ${loanData.credit_score}` : null,
+      latest ? `Recent stages: ${latest}` : null,
+    ].filter(Boolean);
 
-  private async handleGreeting(): Promise<string> {
-    return `👋 Welcome to QuickLoan! I'm here to help you apply for a personal loan.\n\nLet's get started! To verify your identity, could you please provide your **PAN number**?\n\n💡 Your PAN should be in the format: ABCDE1234F`;
+    return parts.join(' | ');
   }
 
-  private async handlePANCollection(message: string): Promise<{
-    success: boolean;
-    data?: any;
-    response: string;
-  }> {
-    // Extract PAN from message
+  private async handleGreeting(): Promise<string> {
+    return `Welcome to QuickLoan. I can help you apply for a personal loan.\n\nTo verify your identity, please provide your PAN number in this format: ABCDE1234F.`;
+  }
+
+  private async handlePANCollection(message: string): Promise<{ success: boolean; data?: any; response: string }> {
     const panRegex = /[A-Z]{5}[0-9]{4}[A-Z]/gi;
     const panMatch = message.match(panRegex);
 
     if (!panMatch) {
       return {
         success: false,
-        response: `I couldn't find a valid PAN number in your message. Please provide your PAN in the format: ABCDE1234F`,
+        response: 'I could not find a valid PAN number. Please share PAN in this format: ABCDE1234F.',
       };
     }
 
     const pan = panMatch[0].toUpperCase();
-
-    // Verify with KYC Agent
     const kycResult = await this.kycAgent.verify(pan);
 
     if (!kycResult.success) {
@@ -207,7 +215,7 @@ export class Orchestrator {
     }
 
     const successResponse = this.kycAgent.generateResponse(kycResult);
-    const nextQuestion = `\n\nNow, let's talk about your employment. Are you:\n1️⃣ Salaried\n2️⃣ Self-Employed\n3️⃣ Business Owner`;
+    const nextQuestion = '\n\nNow tell me your employment type: Salaried, Self-Employed, or Business Owner.';
 
     return {
       success: true,
@@ -216,44 +224,35 @@ export class Orchestrator {
     };
   }
 
-  private async handleEmploymentCollection(
-    message: string
-  ): Promise<{ data: any; response: string; nextStage: ConversationStage }> {
+  private async handleEmploymentCollection(message: string): Promise<{ data: any; response: string; nextStage: ConversationStage }> {
     const lowerMsg = message.toLowerCase();
     let employmentType: string | undefined;
 
-    if (lowerMsg.includes('salaried') || lowerMsg.includes('1')) {
-      employmentType = 'Salaried';
-    } else if (lowerMsg.includes('self') || lowerMsg.includes('2')) {
-      employmentType = 'Self-Employed';
-    } else if (lowerMsg.includes('business') || lowerMsg.includes('3')) {
-      employmentType = 'Business Owner';
-    }
+    if (lowerMsg.includes('salaried') || lowerMsg.includes('1')) employmentType = 'Salaried';
+    else if (lowerMsg.includes('self') || lowerMsg.includes('2')) employmentType = 'Self-Employed';
+    else if (lowerMsg.includes('business') || lowerMsg.includes('3')) employmentType = 'Business Owner';
 
     if (!employmentType) {
       return {
         data: {},
-        response: 'Please choose:\n1️⃣ Salaried\n2️⃣ Self-Employed\n3️⃣ Business Owner',
+        response: 'Please choose one: Salaried, Self-Employed, or Business Owner.',
         nextStage: 'collect_employment',
       };
     }
 
     return {
       data: { employment_type: employmentType as any },
-      response: `Great! You're ${employmentType}.\n\nWhat is your **monthly income** in rupees?`,
+      response: `Great. You are ${employmentType}. What is your monthly income in rupees?`,
       nextStage: 'collect_income',
     };
   }
 
-  private async handleIncomeCollection(
-    message: string
-  ): Promise<{ data: any; response: string; nextStage: ConversationStage }> {
-    // Extract number from message
+  private async handleIncomeCollection(message: string): Promise<{ data: any; response: string; nextStage: ConversationStage }> {
     const numberMatch = message.match(/[\d,]+/);
     if (!numberMatch) {
       return {
         data: {},
-        response: 'Please enter your monthly income as a number (e.g., 50000)',
+        response: 'Please enter monthly income as a number, for example 50000.',
         nextStage: 'collect_income',
       };
     }
@@ -263,72 +262,57 @@ export class Orchestrator {
     if (income < 10000) {
       return {
         data: {},
-        response: 'The income seems too low. Please enter your monthly income in rupees (e.g., 50000)',
+        response: 'That looks too low. Please enter monthly income in rupees, for example 50000.',
         nextStage: 'collect_income',
       };
     }
 
     return {
       data: { monthly_income: income },
-      response: `Monthly income of ₹${income.toLocaleString('en-IN')} noted!\n\nNow, let's discuss the loan:\n• **How much loan amount** do you need?\n• **What is the purpose** of this loan?\n• **Preferred tenure** (in months, e.g., 12, 24, 36)?`,
+      response: `Income of INR ${income.toLocaleString('en-IN')} noted.\n\nNow share loan amount, purpose, and tenure (months).`,
       nextStage: 'collect_loan_details',
     };
   }
 
-  private async handleLoanDetailsCollection(
-    message: string
-  ): Promise<{ data: any; response: string; nextStage: ConversationStage }> {
+  private async handleLoanDetailsCollection(message: string): Promise<{ data: any; response: string; nextStage: ConversationStage }> {
     const data: any = {};
 
-    // Extract loan amount
     const amountMatch = message.match(/[\d,]+/);
-    if (amountMatch) {
-      data.loan_amount_requested = parseInt(amountMatch[0].replace(/,/g, ''));
-    }
+    if (amountMatch) data.loan_amount_requested = parseInt(amountMatch[0].replace(/,/g, ''));
 
-    // Extract tenure
     const tenureMatch = message.match(/(\d+)\s*(month|months|mo)/i);
-    if (tenureMatch) {
-      data.preferred_tenure = parseInt(tenureMatch[1]);
-    }
+    if (tenureMatch) data.preferred_tenure = parseInt(tenureMatch[1]);
 
-    // Extract purpose (simple keywords)
     const lowerMsg = message.toLowerCase();
     if (lowerMsg.includes('wedding')) data.loan_purpose = 'Wedding';
     else if (lowerMsg.includes('education')) data.loan_purpose = 'Education';
     else if (lowerMsg.includes('medical')) data.loan_purpose = 'Medical';
-    else if (lowerMsg.includes('home') || lowerMsg.includes('renovation'))
-      data.loan_purpose = 'Home Renovation';
+    else if (lowerMsg.includes('home') || lowerMsg.includes('renovation')) data.loan_purpose = 'Home Renovation';
     else if (lowerMsg.includes('business')) data.loan_purpose = 'Business';
+    else data.loan_purpose = 'Other';
 
-    // Check if we have all required fields
-    if (!data.loan_amount_requested || !data.preferred_tenure || !data.loan_purpose) {
+    if (!data.loan_amount_requested || !data.preferred_tenure) {
       return {
         data: {},
-        response:
-          'Please provide:\n1. Loan amount (e.g., 500000)\n2. Purpose (wedding/education/medical/home renovation/business)\n3. Tenure in months (e.g., 36)',
+        response: 'Please include loan amount and tenure in months. Example: 500000 wedding 36 months.',
         nextStage: 'collect_loan_details',
       };
     }
 
     return {
       data,
-      response: `Perfect! Loan details captured:\n• Amount: ₹${data.loan_amount_requested.toLocaleString(
-        'en-IN'
-      )}\n• Purpose: ${data.loan_purpose}\n• Tenure: ${data.preferred_tenure} months\n\nLast question: Do you have any **existing monthly EMIs** from other loans? If yes, what's the total monthly EMI amount? If no, just say 0.`,
+      response: `Captured:\n- Amount: INR ${data.loan_amount_requested.toLocaleString('en-IN')}\n- Purpose: ${data.loan_purpose}\n- Tenure: ${data.preferred_tenure} months\n\nLast question: do you have any existing monthly EMIs? Enter 0 if none.`,
       nextStage: 'collect_existing_obligations',
     };
   }
 
-  private async handleEMICollection(
-    message: string
-  ): Promise<{ data: any; response: string; nextStage: ConversationStage }> {
+  private async handleEMICollection(message: string): Promise<{ data: any; response: string; nextStage: ConversationStage }> {
     const numberMatch = message.match(/[\d,]+/);
     const existingEMI = numberMatch ? parseInt(numberMatch[0].replace(/,/g, '')) : 0;
 
     return {
       data: { existing_emi: existingEMI },
-      response: `Existing EMI: ₹${existingEMI.toLocaleString('en-IN')} noted.\n\n📊 Fetching your credit score...`,
+      response: `Existing EMI of INR ${existingEMI.toLocaleString('en-IN')} noted. Fetching credit score now...`,
       nextStage: 'underwriting',
     };
   }

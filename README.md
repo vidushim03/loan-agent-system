@@ -79,7 +79,7 @@ User Input → Master Agent (Orchestrator) → Worker Agents
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/AnshAggr1303/loan-agent-system.git
+git clone https://github.com/vidushim03/loan-agent-system.git
 cd loan-agent-system
 ```
 
@@ -373,9 +373,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👤 **Author**
 
-**Ansh Aggarwal**
+Vidushi Maheshwari
 
-- GitHub: [@AnshAggr1303](https://github.com/AnshAggr1303)
+- GitHub: [@vidushim03](https://github.com/vidushim03)
 - LinkedIn: [Your LinkedIn](https://linkedin.com/in/yourprofile)
 
 ---
@@ -396,7 +396,7 @@ If you have any questions or issues:
 
 1. Check the [Troubleshooting Guide](./TROUBLESHOOTING.md)
 2. Read the [API Documentation](./API_ROUTES.md)
-3. Open an [Issue](https://github.com/AnshAggr1303/loan-agent-system/issues)
+3. Open an [Issue](https://github.com/vidushim03/loan-agent-system/issues)
 
 ---
 
@@ -412,4 +412,4 @@ _Coming soon..._
 
 ---
 
-**Made with ❤️ by Ansh Aggarwal**
+Made with care by Vidushi Maheshwari

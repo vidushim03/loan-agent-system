@@ -5,22 +5,18 @@
 
 import { LoanApplicationData, UnderwritingDecision } from '@/types';
 import { calculateEMI, calculateDTI, calculateInterestRate, calculateProcessingFee } from '@/lib/utils/calculations';
+import { DEFAULT_UNDERWRITING_POLICY, type UnderwritingPolicyConfig } from '@/lib/services/underwriting-policy';
 
 /**
  * Underwriting Agent
  * Makes loan approval decisions based on business rules
  */
 export class UnderwritingAgent {
-  private readonly RULES = {
-    MIN_AGE: 21,
-    MAX_AGE: 60,
-    MIN_INCOME_SALARIED: 25000,
-    MIN_INCOME_SELF_EMPLOYED: 40000,
-    MIN_CREDIT_SCORE: 650,
-    MAX_DTI_RATIO: 0.50, // 50%
-    MAX_LOAN_MULTIPLIER_SALARIED: 10,
-    MAX_LOAN_MULTIPLIER_SELF_EMPLOYED: 5,
-  };
+  private readonly policy: UnderwritingPolicyConfig;
+
+  constructor(policy: UnderwritingPolicyConfig = DEFAULT_UNDERWRITING_POLICY) {
+    this.policy = policy;
+  }
 
   /**
    * Evaluate loan application using business rules
@@ -29,18 +25,18 @@ export class UnderwritingAgent {
     const failedRules: string[] = [];
 
     // ========== Rule 1: Age Constraint ==========
-    if (!data.age || data.age < this.RULES.MIN_AGE) {
-      failedRules.push(`Minimum age requirement: ${this.RULES.MIN_AGE} years`);
+    if (!data.age || data.age < this.policy.min_age) {
+      failedRules.push(`Minimum age requirement: ${this.policy.min_age} years`);
     }
-    if (data.age && data.age > this.RULES.MAX_AGE) {
-      failedRules.push(`Maximum age limit: ${this.RULES.MAX_AGE} years`);
+    if (data.age && data.age > this.policy.max_age) {
+      failedRules.push(`Maximum age limit: ${this.policy.max_age} years`);
     }
 
     // ========== Rule 2: Minimum Income ==========
     const minIncome =
       data.employment_type === 'Salaried'
-        ? this.RULES.MIN_INCOME_SALARIED
-        : this.RULES.MIN_INCOME_SELF_EMPLOYED;
+        ? this.policy.min_income_salaried
+        : this.policy.min_income_self_employed;
 
     if (!data.monthly_income || data.monthly_income < minIncome) {
       failedRules.push(
@@ -49,8 +45,8 @@ export class UnderwritingAgent {
     }
 
     // ========== Rule 3: Credit Score ==========
-    if (!data.credit_score || data.credit_score < this.RULES.MIN_CREDIT_SCORE) {
-      failedRules.push(`Minimum credit score required: ${this.RULES.MIN_CREDIT_SCORE}`);
+    if (!data.credit_score || data.credit_score < this.policy.min_credit_score) {
+      failedRules.push(`Minimum credit score required: ${this.policy.min_credit_score}`);
     }
 
     // ========== Rule 4: DTI Ratio ==========
@@ -65,11 +61,9 @@ export class UnderwritingAgent {
       const existingEMI = data.existing_emi || 0;
       const dtiRatio = calculateDTI(existingEMI, estimatedEMI, data.monthly_income);
 
-      if (dtiRatio > this.RULES.MAX_DTI_RATIO * 100) {
+      if (dtiRatio > this.policy.max_dti_ratio) {
         failedRules.push(
-          `Debt-to-Income ratio (${dtiRatio.toFixed(1)}%) exceeds maximum allowed (${
-            this.RULES.MAX_DTI_RATIO * 100
-          }%)`
+          `Debt-to-Income ratio (${dtiRatio.toFixed(1)}%) exceeds maximum allowed (${this.policy.max_dti_ratio}%)`
         );
       }
     }
@@ -78,8 +72,8 @@ export class UnderwritingAgent {
     if (data.monthly_income && data.loan_amount_requested) {
       const multiplier =
         data.employment_type === 'Salaried'
-          ? this.RULES.MAX_LOAN_MULTIPLIER_SALARIED
-          : this.RULES.MAX_LOAN_MULTIPLIER_SELF_EMPLOYED;
+          ? this.policy.max_loan_multiplier_salaried
+          : this.policy.max_loan_multiplier_self_employed;
 
       const maxLoanAmount = data.monthly_income * multiplier;
 
@@ -163,9 +157,9 @@ export class UnderwritingAgent {
     if (!data.monthly_income) return null;
 
     const multiplier =
-      data.employment_type === 'Salaried'
-        ? this.RULES.MAX_LOAN_MULTIPLIER_SALARIED
-        : this.RULES.MAX_LOAN_MULTIPLIER_SELF_EMPLOYED;
+        data.employment_type === 'Salaried'
+        ? this.policy.max_loan_multiplier_salaried
+        : this.policy.max_loan_multiplier_self_employed;
 
     const maxAmount = data.monthly_income * multiplier;
     const counterOffer = Math.min(maxAmount, (data.loan_amount_requested || 0) * 0.6);

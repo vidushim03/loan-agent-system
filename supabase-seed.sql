@@ -22,3 +22,30 @@ ON CONFLICT (pan_number) DO UPDATE SET
   credit_history_years = EXCLUDED.credit_history_years,
   defaults = EXCLUDED.defaults,
   updated_at = NOW();
+
+INSERT INTO underwriting_policies (
+  policy_name,
+  version,
+  min_age,
+  max_age,
+  min_income_salaried,
+  min_income_self_employed,
+  min_credit_score,
+  max_dti_ratio,
+  max_loan_multiplier_salaried,
+  max_loan_multiplier_self_employed,
+  active
+)
+VALUES (
+  'Default Personal Loan Policy',
+  1,
+  21,
+  60,
+  25000,
+  40000,
+  650,
+  50,
+  10,
+  5,
+  TRUE
+);

@@ -1,61 +1,59 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import ApplicationsDashboard from "./applications-dashboard";
+import type { ApplicationDocument, LoanApplication, UserProfile } from "@/types";
 
-const DEMO_APPLICATIONS = [
-  { id: "APP-2026-001", customer: "Rohan Gupta", amount: 500000, status: "Approved", score: 790 },
-  { id: "APP-2026-002", customer: "Meera Jain", amount: 300000, status: "Rejected", score: 635 },
-  { id: "APP-2026-003", customer: "Amit Rao", amount: 750000, status: "Under Review", score: 705 },
-];
+export default async function ApplicationsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-export default function ApplicationsPage() {
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("user_id, full_name, role, organization, created_at, updated_at")
+    .eq("user_id", user.id)
+    .maybeSingle<UserProfile>();
+
+  const isReviewerView = profile?.role === "reviewer" || profile?.role === "admin";
+
+  let applicationsQuery = supabase
+    .from("loan_applications")
+    .select("id, user_id, full_name, pan_number, employment_type, loan_amount_requested, sanctioned_amount, monthly_income, approval_status, application_stage, risk_band, policy_version, created_at, updated_at")
+    .order("created_at", { ascending: false })
+    .limit(25);
+
+  if (!isReviewerView) {
+    applicationsQuery = applicationsQuery.eq("user_id", user.id);
+  }
+
+  const { data: applicationsData } = await applicationsQuery.returns<LoanApplication[]>();
+  const applications = applicationsData ?? [];
+  const applicationIds = applications.map((application) => application.id);
+
+  let documents: ApplicationDocument[] = [];
+  if (applicationIds.length > 0) {
+    const { data: documentRows } = await supabase
+      .from("application_documents")
+      .select("id, application_id, user_id, document_type, file_name, storage_path, status, notes, uploaded_at, verified_at")
+      .in("application_id", applicationIds)
+      .order("uploaded_at", { ascending: true })
+      .returns<ApplicationDocument[]>();
+
+    documents = documentRows ?? [];
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Applications</h1>
-        <p className="text-sm text-muted-foreground">
-          Snapshot of recent loan applications processed by the underwriting engine.
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardDescription>Total Applications</CardDescription>
-            <CardTitle>42</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Approval Rate</CardDescription>
-            <CardTitle>78%</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Average Ticket Size</CardDescription>
-            <CardTitle>INR 5.8L</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Cases</CardTitle>
-          <CardDescription>Demo data to showcase UI and workflow</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 text-sm">
-            {DEMO_APPLICATIONS.map((app) => (
-              <div key={app.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
-                <div>
-                  <p className="font-medium">{app.id} - {app.customer}</p>
-                  <p className="text-muted-foreground">Amount: INR {app.amount.toLocaleString("en-IN")} | Credit Score: {app.score}</p>
-                </div>
-                <p className="font-semibold">{app.status}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ApplicationsDashboard
+      applications={applications}
+      currentUserId={user.id}
+      documents={documents}
+      isReviewerView={isReviewerView}
+      profile={profile ?? null}
+    />
   );
 }

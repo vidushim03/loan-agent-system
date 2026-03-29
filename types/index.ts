@@ -7,6 +7,17 @@ export interface User {
   created_at: string;
 }
 
+export type UserRole = 'customer' | 'reviewer' | 'admin';
+
+export interface UserProfile {
+  user_id: string;
+  full_name?: string;
+  role: UserRole;
+  organization?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface KYCData {
   pan_number: string;
   full_name: string;
@@ -39,6 +50,18 @@ export interface CreditCheckResult {
 export type EmploymentType = 'Salaried' | 'Self-Employed' | 'Business Owner';
 export type LoanPurpose = 'Wedding' | 'Education' | 'Medical' | 'Home Renovation' | 'Business' | 'Travel' | 'Other';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'in_progress';
+export type ApplicationLifecycle =
+  | 'draft'
+  | 'submitted'
+  | 'kyc_verified'
+  | 'credit_cleared'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'documents_pending'
+  | 'completed';
+
+export type DocumentStatus = 'pending' | 'uploaded' | 'verified' | 'rejected';
 
 export interface LoanApplicationData {
   pan_number?: string;
@@ -66,14 +89,48 @@ export interface LoanApplication extends LoanApplicationData {
   id: string;
   user_id: string;
   approval_status: ApprovalStatus;
+  application_stage?: ApplicationLifecycle;
+  assigned_reviewer_id?: string | null;
+  policy_version?: number | null;
+  risk_band?: string | null;
   sanctioned_amount?: number;
   interest_rate?: number;
   monthly_emi?: number;
   rejection_reason?: string;
   failed_rules?: string[];
   sanction_letter_url?: string;
+  conversation_summary?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ApplicationDocument {
+  id: string;
+  application_id: string;
+  user_id: string;
+  document_type: string;
+  file_name: string;
+  storage_path?: string | null;
+  status: DocumentStatus;
+  notes?: string | null;
+  uploaded_at: string;
+  verified_at?: string | null;
+}
+
+export interface UnderwritingPolicy {
+  id: string;
+  policy_name: string;
+  version: number;
+  min_age: number;
+  max_age: number;
+  min_income_salaried: number;
+  min_income_self_employed: number;
+  min_credit_score: number;
+  max_dti_ratio: number;
+  max_loan_multiplier_salaried: number;
+  max_loan_multiplier_self_employed: number;
+  active: boolean;
+  created_at: string;
 }
 
 export interface UnderwritingDecision {

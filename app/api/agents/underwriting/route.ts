@@ -4,8 +4,11 @@ import { LoanApplicationData } from '@/types';
 import { createClient } from '@/lib/supabase/server';
 import { v4 as uuidv4 } from 'uuid';
 import { rateLimit } from '@/lib/utils/rate-limit';
+import { getActiveUnderwritingPolicy } from '@/lib/services/underwriting-policy';
 
 export const runtime = 'edge';
+
+const REQUIRED_DOCUMENTS = ['identity_proof', 'income_proof', 'bank_statement'];
 
 function getClientIp(request: NextRequest): string {
   const forwardedFor = request.headers.get('x-forwarded-for') || 'unknown';
@@ -27,9 +30,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Loan data is required' }, { status: 400 });
     }
 
-    const underwritingAgent = new UnderwritingAgent();
+    const policy = await getActiveUnderwritingPolicy();
+    const underwritingAgent = new UnderwritingAgent(policy);
     const decision = underwritingAgent.evaluate(loanData as LoanApplicationData);
     const responseMessage = underwritingAgent.generateResponse(decision, loanData.full_name || 'Customer');
+    const lifecycleStage = decision.approved ? 'documents_pending' : 'rejected';
+    const riskBand =
+      !loanData.credit_score ? 'unknown' :
+      loanData.credit_score >= 750 ? 'low' :
+      loanData.credit_score >= 650 ? 'medium' :
+      'high';
 
     let applicationId: string | null = null;
 
@@ -64,11 +74,15 @@ export async function POST(request: NextRequest) {
           credit_status: loanData.credit_status,
           active_loans: loanData.active_loans || 0,
           approval_status: decision.approved ? 'approved' : 'rejected',
+          application_stage: lifecycleStage,
+          policy_version: policy.version,
+          risk_band: riskBand,
           sanctioned_amount: decision.sanctioned_amount,
           interest_rate: decision.interest_rate,
           monthly_emi: decision.monthly_emi,
           rejection_reason: decision.rejection_reason,
           failed_rules: decision.failed_rules,
+          conversation_summary: body?.conversationSummary || null,
         };
 
         const { data, error } = await supabase
@@ -81,6 +95,18 @@ export async function POST(request: NextRequest) {
           console.error('Database insert error:', error);
         } else {
           applicationId = data.id;
+
+          if (decision.approved) {
+            const documentRows = REQUIRED_DOCUMENTS.map((documentType) => ({
+              application_id: data.id,
+              user_id: userId,
+              document_type: documentType,
+              file_name: `${documentType}.pending`,
+              status: 'pending',
+            }));
+
+            await supabase.from('application_documents').insert(documentRows);
+          }
         }
       } catch (dbError) {
         console.error('Database error (non-critical):', dbError);
@@ -104,6 +130,9 @@ export async function POST(request: NextRequest) {
       data: decision,
       message: responseMessage,
       applicationId,
+      policyVersion: policy.version,
+      lifecycleStage,
+      riskBand,
       counterOffer,
     });
   } catch (error) {

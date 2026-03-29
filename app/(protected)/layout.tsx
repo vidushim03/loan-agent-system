@@ -14,7 +14,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
         <nav className="flex flex-col space-y-4 text-sm font-medium">
           <Link href="/chat" className="transition-colors hover:text-sidebar-primary">Chat Assistant</Link>
           <Link href="/applications" className="transition-colors hover:text-sidebar-primary">Applications</Link>
-          <Link href="/chat" className="transition-colors hover:text-sidebar-primary">Documents</Link>
+          <Link href="/applications" className="transition-colors hover:text-sidebar-primary">Documents</Link>
           <Link href="/chat" className="transition-colors hover:text-sidebar-primary">Settings</Link>
         </nav>
 
@@ -65,3 +65,4 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
+

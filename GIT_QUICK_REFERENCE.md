@@ -1,10 +1,10 @@
-# 🚀 Git Quick Reference - Copy & Paste Commands
+# ???? Git Quick Reference - Copy & Paste Commands
 
-## ⚡ **Quick Push to GitHub (First Time)**
+## ??? **Quick Push to GitHub (First Time)**
 
 ```bash
 # Navigate to project
-cd /Users/anshagrawal/learnbackend/loan-agent-system
+cd C:/Users/vidus/OneDrive/Desktop/Projects/loan-agent-system-clean
 
 # Initialize git
 git init
@@ -16,7 +16,7 @@ git add .
 git commit -m "Initial commit: Multi-agent loan application system"
 
 # Connect to GitHub
-git remote add origin https://github.com/AnshAggr1303/loan-agent-system.git
+git remote add origin https://github.com/vidushim03/loan-agent-system.git
 
 # Push
 git branch -M main
@@ -25,7 +25,7 @@ git push -u origin main
 
 ---
 
-## 🔄 **Regular Updates (After First Push)**
+## ???? **Regular Updates (After First Push)**
 
 ```bash
 # Check what changed
@@ -43,7 +43,7 @@ git push
 
 ---
 
-## 📦 **Useful Commands**
+## ???? **Useful Commands**
 
 ```bash
 # Check git status
@@ -65,12 +65,12 @@ git reset --hard HEAD
 git pull
 
 # Clone repository
-git clone https://github.com/AnshAggr1303/loan-agent-system.git
+git clone https://github.com/vidushim03/loan-agent-system.git
 ```
 
 ---
 
-## 🌿 **Branching**
+## ???? **Branching**
 
 ```bash
 # Create new branch
@@ -91,7 +91,7 @@ git push -u origin feature/new-feature
 
 ---
 
-## 🔧 **Fix Common Issues**
+## ???? **Fix Common Issues**
 
 ### Remove file from tracking
 ```bash
@@ -102,7 +102,7 @@ git push
 
 ### Change remote URL
 ```bash
-git remote set-url origin https://github.com/AnshAggr1303/loan-agent-system.git
+git remote set-url origin https://github.com/vidushim03/loan-agent-system.git
 ```
 
 ### Force push (use carefully!)
@@ -118,7 +118,7 @@ git reset --hard origin/main
 
 ---
 
-## 📝 **Commit Message Templates**
+## ???? **Commit Message Templates**
 
 ```bash
 # Feature
@@ -145,7 +145,7 @@ git commit -m "chore: Update dependencies"
 
 ---
 
-## ✅ **Pre-Push Checklist**
+## ??? **Pre-Push Checklist**
 
 Before every `git push`:
 
@@ -168,17 +168,18 @@ git push
 
 ---
 
-## 🎯 **Your Repository**
+## ???? **Your Repository**
 
-**URL:** https://github.com/AnshAggr1303/loan-agent-system
+**URL:** https://github.com/vidushim03/loan-agent-system
 
 **Clone command:**
 ```bash
-git clone https://github.com/AnshAggr1303/loan-agent-system.git
+git clone https://github.com/vidushim03/loan-agent-system.git
 ```
 
 ---
 
-## 📞 **Need Help?**
+## ???? **Need Help?**
 
 Read the full guide: [GITHUB_SETUP.md](./GITHUB_SETUP.md)
+

@@ -1,23 +1,23 @@
-# 🚀 GitHub Setup Guide
+# ???? GitHub Setup Guide
 
 ## Step-by-Step Instructions to Push Your Project
 
 ---
 
-## ✅ **Prerequisites**
+## ??? **Prerequisites**
 
 1. GitHub account created
 2. Git installed on your machine
-3. Repository created: https://github.com/AnshAggr1303/loan-agent-system
+3. Repository created: https://github.com/vidushim03/loan-agent-system
 
 ---
 
-## 📦 **Step 1: Verify Files Are Ready**
+## ???? **Step 1: Verify Files Are Ready**
 
 Make sure you have these files in your project:
 
 ```bash
-cd /Users/anshagrawal/learnbackend/loan-agent-system
+cd C:/Users/vidus/OneDrive/Desktop/Projects/loan-agent-system-clean
 
 # Check if these files exist
 ls -la .gitignore
@@ -27,18 +27,18 @@ ls -la LICENSE
 
 **Expected output:**
 ```
-✅ .gitignore
-✅ README.md
-✅ LICENSE
+??? .gitignore
+??? README.md
+??? LICENSE
 ```
 
 ---
 
-## 🔧 **Step 2: Initialize Git Repository**
+## ???? **Step 2: Initialize Git Repository**
 
 ```bash
 # Navigate to your project
-cd /Users/anshagrawal/learnbackend/loan-agent-system
+cd C:/Users/vidus/OneDrive/Desktop/Projects/loan-agent-system-clean
 
 # Initialize git (if not already done)
 git init
@@ -49,11 +49,11 @@ git status
 
 ---
 
-## 📝 **Step 3: Configure Git (First Time Only)**
+## ???? **Step 3: Configure Git (First Time Only)**
 
 ```bash
 # Set your name
-git config --global user.name "Ansh Aggarwal"
+git config --global user.name "Vidushi Maheshwari"
 
 # Set your email (use your GitHub email)
 git config --global user.email "your-email@example.com"
@@ -64,24 +64,24 @@ git config --list
 
 ---
 
-## 🚫 **Step 4: Verify .gitignore is Working**
+## ???? **Step 4: Verify .gitignore is Working**
 
 ```bash
 # Check what files will be committed
 git status
 
 # You should NOT see:
-# ❌ node_modules/
-# ❌ .next/
-# ❌ .env.local
-# ❌ .env
+# ??? node_modules/
+# ??? .next/
+# ??? .env.local
+# ??? .env
 
 # If you see these, check your .gitignore file
 ```
 
 ---
 
-## ➕ **Step 5: Add Files to Git**
+## ??? **Step 5: Add Files to Git**
 
 ```bash
 # Add all files
@@ -120,7 +120,7 @@ Changes to be committed:
 
 ---
 
-## 💾 **Step 6: Commit Changes**
+## ???? **Step 6: Commit Changes**
 
 ```bash
 # Create your first commit
@@ -142,11 +142,11 @@ git log
 
 ---
 
-## 🔗 **Step 7: Connect to GitHub Repository**
+## ???? **Step 7: Connect to GitHub Repository**
 
 ```bash
 # Add remote origin
-git remote add origin https://github.com/AnshAggr1303/loan-agent-system.git
+git remote add origin https://github.com/vidushim03/loan-agent-system.git
 
 # Verify remote
 git remote -v
@@ -154,13 +154,13 @@ git remote -v
 
 **Expected output:**
 ```
-origin  https://github.com/AnshAggr1303/loan-agent-system.git (fetch)
-origin  https://github.com/AnshAggr1303/loan-agent-system.git (push)
+origin  https://github.com/vidushim03/loan-agent-system.git (fetch)
+origin  https://github.com/vidushim03/loan-agent-system.git (push)
 ```
 
 ---
 
-## 🚀 **Step 8: Push to GitHub**
+## ???? **Step 8: Push to GitHub**
 
 ```bash
 # Set main branch (if needed)
@@ -176,13 +176,13 @@ git push -u origin main
 ```bash
 # Create a Personal Access Token on GitHub:
 # 1. Go to: https://github.com/settings/tokens
-# 2. Click "Generate new token" → "Generate new token (classic)"
+# 2. Click "Generate new token" ??? "Generate new token (classic)"
 # 3. Select scopes: repo (full control)
 # 4. Copy the token
 
 # When prompted for password, use the token instead
 git push -u origin main
-# Username: AnshAggr1303
+# Username: vidushim03
 # Password: <paste your token here>
 ```
 
@@ -200,7 +200,7 @@ cat ~/.ssh/id_ed25519.pub
 # 3. Paste your key
 
 # Change remote to SSH
-git remote set-url origin git@github.com:AnshAggr1303/loan-agent-system.git
+git remote set-url origin git@github.com:vidushim03/loan-agent-system.git
 
 # Push
 git push -u origin main
@@ -208,24 +208,24 @@ git push -u origin main
 
 ---
 
-## ✅ **Step 9: Verify Upload**
+## ??? **Step 9: Verify Upload**
 
 Visit your repository:
 ```
-https://github.com/AnshAggr1303/loan-agent-system
+https://github.com/vidushim03/loan-agent-system
 ```
 
 You should see:
-- ✅ README.md displayed on the homepage
-- ✅ All folders (app, lib, components, etc.)
-- ✅ .gitignore file
-- ✅ LICENSE file
-- ❌ No .env.local file (correctly ignored)
-- ❌ No node_modules folder (correctly ignored)
+- ??? README.md displayed on the homepage
+- ??? All folders (app, lib, components, etc.)
+- ??? .gitignore file
+- ??? LICENSE file
+- ??? No .env.local file (correctly ignored)
+- ??? No node_modules folder (correctly ignored)
 
 ---
 
-## 📝 **Step 10: Update README (Optional)**
+## ???? **Step 10: Update README (Optional)**
 
 Add your LinkedIn and update any placeholders:
 
@@ -235,7 +235,7 @@ nano README.md
 
 # Find and replace:
 # - [Your LinkedIn](https://linkedin.com/in/yourprofile)
-# + [Ansh Aggarwal](https://linkedin.com/in/ansh-aggarwal-xxxx)
+# + [Vidushi Maheshwari](https://linkedin.com/in/vidushi-maheshwari)
 
 # Commit the change
 git add README.md
@@ -245,7 +245,7 @@ git push
 
 ---
 
-## 🔄 **Future Updates**
+## ???? **Future Updates**
 
 When you make changes:
 
@@ -265,7 +265,7 @@ git push
 
 ---
 
-## 🌿 **Branching (For Features)**
+## ???? **Branching (For Features)**
 
 ```bash
 # Create a new branch
@@ -290,7 +290,7 @@ git push
 
 ---
 
-## 🚨 **Common Issues**
+## ???? **Common Issues**
 
 ### **Error: "remote: Repository not found"**
 ```bash
@@ -298,7 +298,7 @@ git push
 git remote -v
 
 # Update if wrong
-git remote set-url origin https://github.com/AnshAggr1303/loan-agent-system.git
+git remote set-url origin https://github.com/vidushim03/loan-agent-system.git
 ```
 
 ### **Error: "fatal: refusing to merge unrelated histories"**
@@ -332,7 +332,7 @@ git push
 
 ---
 
-## 📊 **GitHub Best Practices**
+## ???? **GitHub Best Practices**
 
 ### **Commit Message Format**
 ```bash
@@ -363,7 +363,7 @@ refactor/orchestrator-logic
 
 ---
 
-## 🎉 **Success Checklist**
+## ???? **Success Checklist**
 
 After pushing, verify:
 
@@ -377,14 +377,14 @@ After pushing, verify:
 
 ---
 
-## 🔐 **Security Reminders**
+## ???? **Security Reminders**
 
 **NEVER commit:**
-- ❌ .env.local
-- ❌ .env files with secrets
-- ❌ API keys
-- ❌ Database passwords
-- ❌ Private keys
+- ??? .env.local
+- ??? .env files with secrets
+- ??? API keys
+- ??? Database passwords
+- ??? Private keys
 
 **If you accidentally commit secrets:**
 ```bash
@@ -401,7 +401,7 @@ git push origin --force --all
 
 ---
 
-## 📚 **Additional Resources**
+## ???? **Additional Resources**
 
 - GitHub Docs: https://docs.github.com
 - Git Cheat Sheet: https://education.github.com/git-cheat-sheet-education.pdf
@@ -409,12 +409,12 @@ git push origin --force --all
 
 ---
 
-## ✅ **Quick Command Summary**
+## ??? **Quick Command Summary**
 
 ```bash
 # One-time setup
 git init
-git remote add origin https://github.com/AnshAggr1303/loan-agent-system.git
+git remote add origin https://github.com/vidushim03/loan-agent-system.git
 
 # Regular workflow
 git add .
@@ -428,6 +428,7 @@ git log
 
 ---
 
-**Your code is now on GitHub! 🎉**
+**Your code is now on GitHub! ????**
 
-Share your repo: https://github.com/AnshAggr1303/loan-agent-system
+Share your repo: https://github.com/vidushim03/loan-agent-system
+

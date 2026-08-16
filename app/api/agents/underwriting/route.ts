@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UnderwritingAgent } from '@/lib/agents/underwriting-agent';
 import { LoanApplicationData } from '@/types';
 import { createClient } from '@/lib/supabase/server';
-import { v4 as uuidv4 } from 'uuid';
 import { rateLimit } from '@/lib/utils/rate-limit';
 import { getActiveUnderwritingPolicy } from '@/lib/services/underwriting-policy';
+import { createApplicationRecord, getRiskBand } from '@/lib/services/application-persistence';
 
 export const runtime = 'edge';
-
-const REQUIRED_DOCUMENTS = ['identity_proof', 'income_proof', 'bank_statement'];
 
 function getClientIp(request: NextRequest): string {
   const forwardedFor = request.headers.get('x-forwarded-for') || 'unknown';
@@ -35,11 +33,7 @@ export async function POST(request: NextRequest) {
     const decision = underwritingAgent.evaluate(loanData as LoanApplicationData);
     const responseMessage = underwritingAgent.generateResponse(decision, loanData.full_name || 'Customer');
     const lifecycleStage = decision.approved ? 'documents_pending' : 'rejected';
-    const riskBand =
-      !loanData.credit_score ? 'unknown' :
-      loanData.credit_score >= 750 ? 'low' :
-      loanData.credit_score >= 650 ? 'medium' :
-      'high';
+    const riskBand = getRiskBand(loanData.credit_score);
 
     let applicationId: string | null = null;
 
@@ -57,60 +51,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized user context' }, { status: 401 });
           }
 
-          const applicationData = {
-            id: uuidv4(),
-            user_id: userId,
-            pan_number: loanData.pan_number,
-            full_name: loanData.full_name,
-            age: loanData.age,
-            phone: loanData.phone,
-            employment_type: loanData.employment_type,
-            monthly_income: loanData.monthly_income,
-            company_name: loanData.company_name,
-            loan_amount_requested: loanData.loan_amount_requested,
-            loan_purpose: loanData.loan_purpose,
-            preferred_tenure: loanData.preferred_tenure,
-            existing_emi: loanData.existing_emi || 0,
-            has_credit_card: loanData.has_credit_card || false,
-            credit_card_outstanding: loanData.credit_card_outstanding || 0,
-            credit_score: loanData.credit_score,
-            credit_status: loanData.credit_status,
-            active_loans: loanData.active_loans || 0,
-            approval_status: decision.approved ? 'approved' : 'rejected',
-            application_stage: lifecycleStage,
-            policy_version: policy.version,
-            risk_band: riskBand,
-            sanctioned_amount: decision.sanctioned_amount,
-            interest_rate: decision.interest_rate,
-            monthly_emi: decision.monthly_emi,
-            rejection_reason: decision.rejection_reason,
-            failed_rules: decision.failed_rules,
-            conversation_summary: body?.conversationSummary || null,
-          };
-
-          const { data, error } = await supabase
-            .from('loan_applications')
-            .insert(applicationData)
-            .select()
-            .single();
-
-          if (error) {
-            console.error('Database insert error:', error);
-          } else {
-            applicationId = data.id;
-
-            if (decision.approved) {
-              const documentRows = REQUIRED_DOCUMENTS.map((documentType) => ({
-                application_id: data.id,
-                user_id: userId,
-                document_type: documentType,
-                file_name: `${documentType}.pending`,
-                status: 'pending',
-              }));
-
-              await supabase.from('application_documents').insert(documentRows);
-            }
-          }
+          applicationId = await createApplicationRecord({
+            supabase,
+            userId,
+            loanData: loanData as LoanApplicationData,
+            decision,
+            policy,
+            conversationSummary: body?.conversationSummary,
+          });
         } catch (dbError) {
           console.error('Database error (non-critical):', dbError);
         }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { createServerClient } from "@supabase/ssr";
 
-const PROTECTED_ROUTES = ["/chat", "/applications"];
+const PROTECTED_ROUTES = ["/chat", "/applications", "/documents", "/settings"];
 
 export async function proxy(request: NextRequest) {
   const response = updateSession(request);
@@ -42,5 +42,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/chat/:path*", "/applications/:path*"],
+  matcher: ["/chat/:path*", "/applications/:path*", "/documents/:path*", "/settings/:path*"],
 };

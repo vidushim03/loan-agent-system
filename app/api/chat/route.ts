@@ -4,8 +4,13 @@ import { ConversationState } from '@/types';
 import { createClient } from '@/lib/supabase/server';
 import { rateLimit } from '@/lib/utils/rate-limit';
 import { sanitizeUserMessage, validateConversationState } from '@/lib/utils/validators';
+import { UnderwritingAgent } from '@/lib/agents/underwriting-agent';
+import { getActiveUnderwritingPolicy } from '@/lib/services/underwriting-policy';
+import { createApplicationRecord } from '@/lib/services/application-persistence';
 
 export const runtime = 'edge';
+
+const TERMINAL_STAGES = new Set(['approved', 'rejected']);
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,35 +46,67 @@ export async function POST(request: NextRequest) {
       conversation_state: conversationState as ConversationState,
     });
 
-    try {
-      const supabase = await createClient();
-      const user = supabase ? (await supabase.auth.getUser()).data.user : null;
+    const supabase = await createClient();
+    const user = supabase ? (await supabase.auth.getUser()).data.user : null;
 
-      if (supabase && user && conversationState.application_id) {
+    const updatedState = result.updated_state;
+    const loanData = updatedState.loan_data;
+    const existingApplicationId =
+      conversationState.application_id && !conversationState.application_id.startsWith('demo-')
+        ? conversationState.application_id
+        : null;
+
+    let applicationId = existingApplicationId;
+
+    // Persist the application once the conversation reaches a final decision.
+    if (supabase && user && !applicationId && TERMINAL_STAGES.has(updatedState.stage) && loanData.pan_number) {
+      try {
+        const policy = await getActiveUnderwritingPolicy();
+        const decision = new UnderwritingAgent(policy).evaluate(loanData);
+        const createdId = await createApplicationRecord({
+          supabase,
+          userId: user.id,
+          loanData,
+          decision,
+          policy,
+          conversationSummary: updatedState.conversation_summary,
+        });
+
+        if (createdId) {
+          applicationId = createdId;
+          updatedState.application_id = createdId;
+        }
+      } catch (persistError) {
+        console.error('Application persistence error (non-critical):', persistError);
+      }
+    }
+
+    try {
+      if (supabase && user && applicationId) {
         await supabase.from('conversation_logs').insert({
-          application_id: conversationState.application_id,
+          application_id: applicationId,
           sender: 'user',
           message,
         });
 
         await supabase.from('conversation_logs').insert({
-          application_id: conversationState.application_id,
+          application_id: applicationId,
           sender: 'agent',
           message: result.response,
           metadata: {
             agent_type: result.agent_used,
-            stage: result.updated_state.stage,
+            stage: updatedState.stage,
           },
         });
 
         await supabase.from('agent_audit_logs').insert({
-          application_id: conversationState.application_id,
+          application_id: applicationId,
           user_id: user.id,
           agent_used: result.agent_used || 'master',
           from_stage: conversationState.stage,
-          to_stage: result.updated_state.stage,
+          to_stage: updatedState.stage,
           message_excerpt: message.slice(0, 120),
-          conversation_summary: result.updated_state.conversation_summary || null,
+          conversation_summary: updatedState.conversation_summary || null,
         });
       }
     } catch (dbError) {
@@ -79,7 +116,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       response: result.response,
-      updated_state: result.updated_state,
+      updated_state: updatedState,
       agent_used: result.agent_used,
     });
   } catch (error) {

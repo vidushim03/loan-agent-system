@@ -24,7 +24,6 @@ type ConversationState = {
 };
 
 const initialState: ConversationState = {
-  application_id: "demo-session-123",
   stage: "greeting",
   loan_data: {},
   messages: [],

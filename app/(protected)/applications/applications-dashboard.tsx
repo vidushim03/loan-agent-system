@@ -83,6 +83,7 @@ function getDocumentTone(status: ApplicationDocument["status"]) {
 export default function ApplicationsDashboard({
   applications: initialApplications,
   documents: initialDocuments,
+  currentUserId,
   isReviewerView,
   profile,
 }: DashboardProps) {
@@ -211,6 +212,73 @@ export default function ApplicationsDashboard({
       ...current,
       [applicationId]: status === "verified" ? "Document verified." : "Document sent back for correction.",
     }));
+  };
+
+  const canGenerateSanctionLetter = (application: LoanApplication) => {
+    if (application.approval_status !== "approved") return false;
+    if (application.sanction_letter_url) return false;
+
+    const relatedDocuments = documentsByApplication.get(application.id) ?? [];
+    return (
+      relatedDocuments.length > 0 &&
+      relatedDocuments.every((document) => document.status === "verified") &&
+      !relatedDocuments.some((document) => document.document_type === "sanction_letter")
+    );
+  };
+
+  const handleSanctionLetter = async (applicationId: string) => {
+    const feedbackKey = `sanction:${applicationId}`;
+    setBusyKey(feedbackKey);
+    setFeedback((current) => ({ ...current, [applicationId]: "Generating sanction letter..." }));
+
+    try {
+      const response = await fetch("/api/agents/document", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationId }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Sanction letter generation failed.");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const filename =
+        disposition.match(/filename="(.+)"/)?.[1] ?? `Sanction_Letter_${applicationId}.pdf`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      upsertDocument({
+        id: `sanction-${applicationId}`,
+        application_id: applicationId,
+        user_id: currentUserId,
+        document_type: "sanction_letter",
+        file_name: filename,
+        storage_path: null,
+        status: "verified",
+        uploaded_at: new Date().toISOString(),
+        verified_at: new Date().toISOString(),
+      });
+      updateApplicationStage(applicationId, "completed");
+      setFeedback((current) => ({
+        ...current,
+        [applicationId]: "Sanction letter generated and case marked completed.",
+      }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Sanction letter generation failed.";
+      setFeedback((current) => ({ ...current, [applicationId]: msg }));
+    } finally {
+      setBusyKey(null);
+    }
   };
 
   return (
@@ -432,6 +500,23 @@ export default function ApplicationsDashboard({
                         </div>
                       )}
                     </div>
+
+                    {canGenerateSanctionLetter(application) ? (
+                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                        <p className="font-medium text-emerald-900">Sanction letter ready</p>
+                        <p className="mt-1 text-sm text-emerald-800">
+                          All required documents are verified. Generate the sanction letter to complete this case.
+                        </p>
+                        <Button
+                          className="mt-3"
+                          disabled={busyKey === `sanction:${application.id}`}
+                          onClick={() => handleSanctionLetter(application.id)}
+                          type="button"
+                        >
+                          {busyKey === `sanction:${application.id}` ? "Generating..." : "Generate sanction letter"}
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}

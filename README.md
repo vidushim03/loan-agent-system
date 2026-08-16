@@ -52,7 +52,7 @@ Supporting libraries
 3. The orchestrator collects PAN, employment, income, loan request, and obligations
 4. KYC and credit checks run
 5. Underwriting creates a decision using the active policy
-6. Approved applications move into document collection
+6. Decisions are persisted automatically: approved cases create their document checklist and land in `/applications`
 7. Reviewer or admin verifies uploaded documents
 8. Sanction letter is generated and the case can move to `completed`
 
@@ -77,6 +77,7 @@ API routes
 Core tables used by the app
 - `user_profiles`
 - `kyc_profiles`
+- `kyc_verifications`
 - `credit_profiles`
 - `underwriting_policies`
 - `loan_applications`

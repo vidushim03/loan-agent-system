@@ -9,6 +9,10 @@ function yesNo(value: boolean) {
 
 export default async function SettingsPage() {
   const supabase = await createClient();
+  if (!supabase) {
+    redirect("/login");
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

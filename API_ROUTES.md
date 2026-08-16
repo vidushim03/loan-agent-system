@@ -62,7 +62,7 @@ GET /api/chat
 **Request Body:**
 ```json
 {
-  "pan": "GOODPAN123"
+  "pan": "GOODP1234A"
 }
 ```
 
@@ -71,7 +71,7 @@ GET /api/chat
 {
   "success": true,
   "data": {
-    "pan_number": "GOODPAN123",
+    "pan_number": "GOODP1234A",
     "full_name": "Rohan Gupta",
     "date_of_birth": "1990-05-15",
     "age": 35,
@@ -92,7 +92,7 @@ GET /api/chat
 
 **Get Cached KYC:**
 ```bash
-GET /api/agents/kyc?pan=GOODPAN123
+GET /api/agents/kyc?pan=GOODP1234A
 ```
 
 ---
@@ -108,7 +108,7 @@ GET /api/agents/kyc?pan=GOODPAN123
 **Request Body:**
 ```json
 {
-  "pan": "GOODPAN123"
+  "pan": "GOODP1234A"
 }
 ```
 
@@ -146,7 +146,7 @@ GET /api/agents/credit/health
 ```json
 {
   "loanData": {
-    "pan_number": "GOODPAN123",
+    "pan_number": "GOODP1234A",
     "full_name": "Rohan Gupta",
     "age": 35,
     "phone": "9876543210",
@@ -226,7 +226,7 @@ GET /api/agents/underwriting/application?id=<application-id>
 {
   "applicationId": "APP2025001234",
   "customerName": "Rohan Gupta",
-  "panNumber": "GOODPAN123",
+  "panNumber": "GOODP1234A",
   "phone": "9876543210",
   "sanctionedAmount": 500000,
   "interestRate": 11.5,
@@ -274,14 +274,14 @@ curl -X POST http://localhost:3000/api/chat \
 ```bash
 curl -X POST http://localhost:3000/api/agents/kyc \
   -H "Content-Type: application/json" \
-  -d '{"pan": "GOODPAN123"}'
+  -d '{"pan": "GOODP1234A"}'
 ```
 
 #### Test Credit API:
 ```bash
 curl -X POST http://localhost:3000/api/agents/credit \
   -H "Content-Type: application/json" \
-  -d '{"pan": "GOODPAN123"}'
+  -d '{"pan": "GOODP1234A"}'
 ```
 
 #### Test Document API:
@@ -291,7 +291,7 @@ curl -X POST http://localhost:3000/api/agents/document \
   -d '{
     "applicationId": "TEST123",
     "customerName": "Rohan Gupta",
-    "panNumber": "GOODPAN123",
+    "panNumber": "GOODP1234A",
     "phone": "9876543210",
     "sanctionedAmount": 500000,
     "interestRate": 11.5,
@@ -398,10 +398,10 @@ Here's the typical flow of API calls:
 ### Error: "PAN not found"
 **Cause:** PAN doesn't exist in mock database
 **Fix:** Use one of these test PANs:
-- GOODPAN123
+- GOODP1234A
 - ABCDE1234F
 - FGHIJ5678K
-- BADPAN456
+- BADPA0456N
 
 ### Error: "Failed to generate sanction letter"
 **Cause:** Missing required fields for PDF generation

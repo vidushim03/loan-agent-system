@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, type SupabaseServerClient } from '@/lib/supabase/server';
 import type { ApplicationDocument, ApplicationLifecycle, UserProfile } from '@/types';
+import type { User } from '@supabase/supabase-js';
 import { rateLimit } from '@/lib/utils/rate-limit';
 
 export const runtime = 'edge';
@@ -10,16 +11,24 @@ function getClientIp(request: NextRequest): string {
   return forwardedFor.split(',')[0].trim();
 }
 
-async function getAuthenticatedUser() {
+type AuthResult =
+  | { supabase: SupabaseServerClient; user: User }
+  | { supabase: null; user: null };
+
+async function getAuthenticatedUser(): Promise<AuthResult> {
   const supabase = await createClient();
+  if (!supabase) return { supabase: null, user: null };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) return { supabase: null, user: null };
+
   return { supabase, user };
 }
 
-async function getUserRole(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+async function getUserRole(supabase: SupabaseServerClient, userId: string) {
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('user_id, full_name, role, organization, created_at, updated_at')
@@ -30,7 +39,7 @@ async function getUserRole(supabase: Awaited<ReturnType<typeof createClient>>, u
 }
 
 async function syncApplicationStage(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: SupabaseServerClient,
   applicationId: string,
   reviewerId?: string,
 ) {
@@ -72,7 +81,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { supabase, user } = await getAuthenticatedUser();
-    if (!user) {
+    if (!user || !supabase) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -120,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { supabase, user } = await getAuthenticatedUser();
-    if (!user) {
+    if (!user || !supabase) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -186,7 +195,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { supabase, user } = await getAuthenticatedUser();
-    if (!user) {
+    if (!user || !supabase) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

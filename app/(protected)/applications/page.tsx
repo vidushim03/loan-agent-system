@@ -5,6 +5,10 @@ import type { ApplicationDocument, LoanApplication, UserProfile } from "@/types"
 
 export default async function ApplicationsPage() {
   const supabase = await createClient();
+  if (!supabase) {
+    redirect("/login");
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -102,9 +102,24 @@ export class Orchestrator {
             creditChecked = true;
 
             response += '\n\n' + this.creditAgent.generateResponse(creditResult);
-            response += '\n\nAnalyzing your application...';
-            agentUsed = 'credit';
           }
+
+          const decision = this.underwritingAgent.evaluate(updatedLoanData);
+          const decisionResponse = this.underwritingAgent.generateResponse(
+            decision,
+            updatedLoanData.full_name || 'Customer'
+          );
+          response += '\n\n' + decisionResponse;
+
+          if (decision.approved) {
+            updatedLoanData.sanctioned_amount = decision.sanctioned_amount;
+            updatedLoanData.interest_rate = decision.interest_rate;
+            updatedLoanData.monthly_emi = decision.monthly_emi;
+            newStage = 'approved';
+          } else {
+            newStage = 'rejected';
+          }
+          agentUsed = 'underwriting';
         }
         break;
       }

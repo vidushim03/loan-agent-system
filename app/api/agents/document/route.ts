@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, type SupabaseServerClient } from '@/lib/supabase/server';
 import { generateSanctionLetter, generateSanctionLetterFilename } from '@/lib/utils/pdf-generator';
 import { calculateProcessingFee } from '@/lib/utils/calculations';
 import type { SanctionLetterData, UserProfile } from '@/types';
 
 export const runtime = 'nodejs';
 
-async function getUserRole(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+async function getUserRole(supabase: SupabaseServerClient, userId: string) {
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('user_id, full_name, role, organization, created_at, updated_at')
@@ -38,6 +38,13 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Supabase is not configured. Sign-in is required to generate sanction letters.' },
+        { status: 401 }
+      );
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();

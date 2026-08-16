@@ -15,8 +15,8 @@ export interface MockCreditRecord {
 
 export const MOCK_CREDIT_DATABASE: Record<string, MockCreditRecord> = {
   // ========== Excellent Credit (750+) ==========
-  "GOODPAN123": {
-    pan_number: "GOODPAN123",
+  "GOODP1234A": {
+    pan_number: "GOODP1234A",
     score: 790,
     status: "No defaults",
     active_loans: 1,
@@ -60,8 +60,8 @@ export const MOCK_CREDIT_DATABASE: Record<string, MockCreditRecord> = {
     credit_utilization: 40
   },
   
-  "KYCFAIL789": {
-    pan_number: "KYCFAIL789",
+  "KYCFA1234K": {
+    pan_number: "KYCFA1234K",
     score: 760,
     status: "No defaults",
     active_loans: 0,
@@ -94,8 +94,8 @@ export const MOCK_CREDIT_DATABASE: Record<string, MockCreditRecord> = {
   },
   
   // ========== Average Credit (650-700) ==========
-  "BADPAN456": {
-    pan_number: "BADPAN456",
+  "BADPA0456N": {
+    pan_number: "BADPA0456N",
     score: 680,
     status: "2x 60-day late payments",
     active_loans: 3,

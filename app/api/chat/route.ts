@@ -43,11 +43,9 @@ export async function POST(request: NextRequest) {
 
     try {
       const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = supabase ? (await supabase.auth.getUser()).data.user : null;
 
-      if (user && conversationState.application_id) {
+      if (supabase && user && conversationState.application_id) {
         await supabase.from('conversation_logs').insert({
           application_id: conversationState.application_id,
           sender: 'user',

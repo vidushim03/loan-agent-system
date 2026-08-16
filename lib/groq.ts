@@ -5,9 +5,16 @@
 
 import Groq from 'groq-sdk';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+let groqClient: Groq | null = null;
+
+function getGroqClient(): Groq | null {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return null;
+  if (!groqClient) {
+    groqClient = new Groq({ apiKey });
+  }
+  return groqClient;
+}
 
 export interface GroqChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -28,7 +35,12 @@ export async function chatCompletion(
   options: GroqChatOptions = {}
 ): Promise<string> {
   try {
-    const chatCompletion = await groq.chat.completions.create({
+    const client = getGroqClient();
+    if (!client) {
+      throw new Error('GROQ_API_KEY is not configured');
+    }
+
+    const chatCompletion = await client.chat.completions.create({
       messages,
       model: 'llama-3.3-70b-versatile',
       temperature: options.temperature ?? 0.7,

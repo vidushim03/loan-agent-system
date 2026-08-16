@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { KYCAgent } from '@/lib/agents/kyc-agent';
-import { createClient } from '@/lib/supabase/server';
+import { getAdminClient } from '@/lib/supabase/admin';
+import { verifyKYC } from '@/lib/mock-data/kyc-database';
 import { rateLimit } from '@/lib/utils/rate-limit';
 
 export const runtime = 'edge';
@@ -33,13 +34,15 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const supabase = await createClient();
-      await supabase.from('kyc_verifications').upsert({
-        pan_number: result.data!.pan_number,
-        full_name: result.data!.full_name,
-        kyc_status: result.data!.kyc_status,
-        verified_at: new Date().toISOString(),
-      });
+      const admin = getAdminClient();
+      if (admin) {
+        await admin.from('kyc_verifications').upsert({
+          pan_number: result.data!.pan_number,
+          full_name: result.data!.full_name,
+          kyc_status: result.data!.kyc_status,
+          verified_at: new Date().toISOString(),
+        });
+      }
     } catch (dbError) {
       console.error('Database error (non-critical):', dbError);
     }
@@ -67,8 +70,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'PAN number is required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const admin = getAdminClient();
+
+    if (!admin) {
+      const record = await verifyKYC(pan);
+      if (!record) {
+        return NextResponse.json({ error: 'KYC record not found' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, data: record });
+    }
+
+    const { data, error } = await admin
       .from('kyc_verifications')
       .select('*')
       .eq('pan_number', pan)

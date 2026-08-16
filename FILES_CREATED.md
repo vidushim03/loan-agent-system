@@ -139,7 +139,7 @@ curl http://localhost:3000/api/chat
 # Test KYC
 curl -X POST http://localhost:3000/api/agents/kyc \
   -H "Content-Type: application/json" \
-  -d '{"pan": "GOODPAN123"}'
+  -d '{"pan": "GOODP1234A"}'
 ```
 
 ---

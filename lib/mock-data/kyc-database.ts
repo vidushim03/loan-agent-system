@@ -13,8 +13,8 @@ export interface MockKYCRecord {
 
 export const MOCK_KYC_DATABASE: Record<string, MockKYCRecord> = {
   // ========== Good Credit Profiles ==========
-  "GOODPAN123": {
-    pan_number: "GOODPAN123",
+  "GOODP1234A": {
+    pan_number: "GOODP1234A",
     full_name: "Rohan Gupta",
     date_of_birth: "1990-05-15",
     kyc_status: "VERIFIED",
@@ -41,8 +41,8 @@ export const MOCK_KYC_DATABASE: Record<string, MockKYCRecord> = {
   },
   
   // ========== Average Credit Profiles ==========
-  "BADPAN456": {
-    pan_number: "BADPAN456",
+  "BADPA0456N": {
+    pan_number: "BADPA0456N",
     full_name: "Priya Singh",
     date_of_birth: "1995-11-20",
     kyc_status: "VERIFIED",
@@ -60,8 +60,8 @@ export const MOCK_KYC_DATABASE: Record<string, MockKYCRecord> = {
   },
   
   // ========== KYC Issues ==========
-  "KYCFAIL789": {
-    pan_number: "KYCFAIL789",
+  "KYCFA1234K": {
+    pan_number: "KYCFA1234K",
     full_name: "Amit Verma",
     date_of_birth: "1988-01-30",
     kyc_status: "PENDING_AADHAAR_LINK",

@@ -24,6 +24,10 @@ function getStatusTone(status: ApplicationDocument["status"]) {
 
 export default async function DocumentsPage() {
   const supabase = await createClient();
+  if (!supabase) {
+    redirect("/login");
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

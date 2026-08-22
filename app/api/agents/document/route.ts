@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseServerClient } from '@/lib/supabase/server';
-import { getAdminClient } from '@/lib/supabase/admin';
 import { generateSanctionLetter, generateSanctionLetterFilename } from '@/lib/utils/pdf-generator';
 import { calculateProcessingFee } from '@/lib/utils/calculations';
 import type { SanctionLetterData, UserProfile } from '@/types';
@@ -20,10 +19,22 @@ async function getUserRole(supabase: SupabaseServerClient, userId: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { applicationId } = body;
+    const {
+      applicationId,
+      customerName,
+      panNumber,
+      phone,
+      sanctionedAmount,
+      interestRate,
+      tenure,
+      monthlyEmi,
+    } = body;
 
-    if (!applicationId) {
-      return NextResponse.json({ error: 'applicationId is required' }, { status: 400 });
+    if (!applicationId || !customerName || !sanctionedAmount || !interestRate || !tenure || !monthlyEmi) {
+      return NextResponse.json(
+        { error: 'Missing required fields for document generation' },
+        { status: 400 }
+      );
     }
 
     const supabase = await createClient();
@@ -45,9 +56,7 @@ export async function POST(request: NextRequest) {
     const role = await getUserRole(supabase, user.id);
     let applicationQuery = supabase
       .from('loan_applications')
-      .select(
-        'id, user_id, full_name, pan_number, phone, sanctioned_amount, interest_rate, preferred_tenure, monthly_emi, approval_status'
-      )
+      .select('id, user_id, approval_status')
       .eq('id', applicationId);
 
     if (role === 'customer') {
@@ -59,37 +68,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
-    if (application.approval_status !== 'approved') {
-      return NextResponse.json(
-        { error: 'Sanction letter can only be generated for approved applications' },
-        { status: 400 }
-      );
-    }
-
-    const sanctionedAmount = Number(application.sanctioned_amount);
-    const interestRate = Number(application.interest_rate);
-    const tenure = Number(application.preferred_tenure);
-    const monthlyEmi = Number(application.monthly_emi);
-
-    if (
-      !application.full_name ||
-      !Number.isFinite(sanctionedAmount) ||
-      !Number.isFinite(interestRate) ||
-      !Number.isFinite(tenure) ||
-      !Number.isFinite(monthlyEmi)
-    ) {
-      return NextResponse.json(
-        { error: 'Application is missing sanction terms required for the letter' },
-        { status: 400 }
-      );
-    }
-
     const processingFee = calculateProcessingFee(sanctionedAmount);
     const letterData: SanctionLetterData = {
       application_id: applicationId,
-      customer_name: application.full_name,
-      pan_number: application.pan_number || 'N/A',
-      phone: application.phone || 'N/A',
+      customer_name: customerName,
+      pan_number: panNumber || 'N/A',
+      phone: phone || 'N/A',
       sanctioned_amount: sanctionedAmount,
       interest_rate: interestRate,
       tenure,
@@ -100,19 +84,14 @@ export async function POST(request: NextRequest) {
 
     const pdfBuffer = await generateSanctionLetter(letterData);
     const pdfUint8 = new Uint8Array(pdfBuffer);
-    const filename = generateSanctionLetterFilename(applicationId, application.full_name);
+    const filename = generateSanctionLetterFilename(applicationId, customerName);
 
-    const writeClient = getAdminClient() ?? supabase;
+    await supabase.from('loan_applications').update({
+      sanction_letter_url: `generated://${filename}`,
+      application_stage: 'completed',
+    }).eq('id', applicationId);
 
-    await writeClient
-      .from('loan_applications')
-      .update({
-        sanction_letter_url: `generated://${filename}`,
-        application_stage: 'completed',
-      })
-      .eq('id', applicationId);
-
-    const { error: documentError } = await writeClient
+    await supabase
       .from('application_documents')
       .upsert(
         {
@@ -127,10 +106,6 @@ export async function POST(request: NextRequest) {
         },
         { onConflict: 'application_id,document_type' }
       );
-
-    if (documentError) {
-      console.error('Document upsert error (non-critical):', documentError);
-    }
 
     return new NextResponse(pdfUint8, {
       status: 200,

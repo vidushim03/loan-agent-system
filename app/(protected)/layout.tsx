@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/chat", label: "Chat Assistant" },
   { href: "/applications", label: "Applications" },
   { href: "/documents", label: "Documents" },
+  { href: "/admin", label: "Underwriting (HITL)" },
   { href: "/settings", label: "Settings" },
 ];
 

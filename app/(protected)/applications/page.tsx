@@ -27,7 +27,7 @@ export default async function ApplicationsPage() {
 
   let applicationsQuery = supabase
     .from("loan_applications")
-    .select("id, user_id, full_name, pan_number, employment_type, loan_amount_requested, sanctioned_amount, monthly_income, approval_status, application_stage, risk_band, policy_version, sanction_letter_url, created_at, updated_at")
+    .select("id, user_id, full_name, pan_number, employment_type, loan_amount_requested, sanctioned_amount, monthly_income, approval_status, application_stage, risk_band, policy_version, created_at, updated_at")
     .order("created_at", { ascending: false })
     .limit(25);
 

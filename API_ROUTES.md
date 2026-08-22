@@ -1,26 +1,20 @@
-# API Routes Documentation
+# 🚀 API ROUTES DOCUMENTATION
 
-All endpoints are served from the Next.js App Router under `/api`.
+## 📋 All API Endpoints
 
-**Base URL:** `http://localhost:3000/api`
-
-## Authentication
-
-- `POST /api/agents/document` and `GET|POST|PATCH /api/applications/documents` require a signed-in Supabase user (session cookie).
-- `POST /api/agents/underwriting` requires a `userId` and verifies it matches the authenticated session.
-- The chat, KYC, credit, and Groq endpoints work without auth in local demo mode; when Supabase env vars are present they still validate the session where relevant.
-- In demo mode (no env vars) all rule agents fall back to seeded mock data, so the app is fully runnable without external services.
+### **Base URL:** `http://localhost:3000/api`
 
 ---
 
-## 1. Chat API
+## 1️⃣ **Main Chat API**
 
 **Endpoint:** `POST /api/chat`
 
-Purpose: process a user message and orchestrate the conversation flow. When a conversation reaches a final decision, the application record and required documents are persisted to Supabase automatically (when a user is signed in).
+**File:** `loan-agent-system/app/api/chat/route.ts`
 
-Request body:
+**Purpose:** Process user messages and orchestrate conversation flow
 
+**Request Body:**
 ```json
 {
   "message": "I want to apply for a loan",
@@ -34,17 +28,15 @@ Request body:
 }
 ```
 
-Response:
-
+**Response:**
 ```json
 {
   "success": true,
   "response": "Welcome to QuickLoan! I'm here to help...",
   "updated_state": {
-    "application_id": "uuid-of-application",
     "stage": "collect_pan",
     "loan_data": {},
-    "messages": [],
+    "messages": [...],
     "kyc_verified": false,
     "credit_checked": false
   },
@@ -52,97 +44,112 @@ Response:
 }
 ```
 
-**Health check:** `GET /api/chat`
+**Health Check:**
+```bash
+GET /api/chat
+```
 
 ---
 
-## 2. KYC Verification API
+## 2️⃣ **KYC Verification API**
 
 **Endpoint:** `POST /api/agents/kyc`
 
-Purpose: validate PAN format and return the verified KYC profile (Supabase first, mock fallback).
+**File:** `loan-agent-system/app/api/agents/kyc/route.ts`
 
-Request body:
+**Purpose:** Verify PAN and fetch customer KYC details
 
-```json
-{ "pan": "ABCDE1234F" }
-```
-
-Response (success):
-
+**Request Body:**
 ```json
 {
-  "success": true,
-  "data": {
-    "pan_number": "ABCDE1234F",
-    "full_name": "Rajesh Kumar",
-    "date_of_birth": "1988-03-20",
-    "age": 38,
-    "phone": "9876543211",
-    "kyc_status": "VERIFIED"
-  },
-  "message": "KYC verified successfully. Welcome, Rajesh Kumar. Let's continue with your loan application."
+  "pan": "GOODP1234A"
 }
 ```
 
-Response (error):
-
-```json
-{ "success": false, "error": "PAN not found in our records. Please verify the PAN number." }
-```
-
-**Get cached KYC:** `GET /api/agents/kyc?pan=ABCDE1234F`
-
----
-
-## 3. Credit Check API
-
-**Endpoint:** `POST /api/agents/credit`
-
-Purpose: fetch the credit score and credit history (Supabase first, mock fallback).
-
-Request body:
-
-```json
-{ "pan": "ABCDE1234F" }
-```
-
-Response:
-
+**Response (Success):**
 ```json
 {
   "success": true,
   "data": {
-    "score": 820,
-    "status": "Excellent payment history",
-    "active_loans": 2,
-    "credit_history_years": 10,
-    "defaults": "No defaults"
+    "pan_number": "GOODP1234A",
+    "full_name": "Rohan Gupta",
+    "date_of_birth": "1990-05-15",
+    "age": 35,
+    "phone": "9876543210",
+    "kyc_status": "VERIFIED"
   },
-  "message": "Credit Score: 820 (Excellent)...",
+  "message": "✅ KYC Verified successfully!\n\nWelcome, Rohan Gupta!..."
+}
+```
+
+**Response (Error):**
+```json
+{
+  "success": false,
+  "error": "PAN not found in our records"
+}
+```
+
+**Get Cached KYC:**
+```bash
+GET /api/agents/kyc?pan=GOODP1234A
+```
+
+---
+
+## 3️⃣ **Credit Check API**
+
+**Endpoint:** `POST /api/agents/credit`
+
+**File:** `loan-agent-system/app/api/agents/credit/route.ts`
+
+**Purpose:** Fetch credit score and credit history
+
+**Request Body:**
+```json
+{
+  "pan": "GOODP1234A"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "score": 790,
+    "status": "No defaults",
+    "active_loans": 1,
+    "credit_history_years": 8
+  },
+  "message": "✅ Credit Score: 790 (Very Good)\n\n📊 Credit Assessment:...",
   "meetsMinimumRequirement": true
 }
 ```
 
-**Health check:** `GET /api/agents/credit`
+**Health Check:**
+```bash
+GET /api/agents/credit/health
+```
 
 ---
 
-## 4. Underwriting API
+## 4️⃣ **Underwriting API**
 
 **Endpoint:** `POST /api/agents/underwriting`
 
-Purpose: evaluate a loan application against the active policy and persist the result.
+**File:** `loan-agent-system/app/api/agents/underwriting/route.ts`
 
-Request body:
+**Purpose:** Evaluate loan application and make approval decision
 
+**Request Body:**
 ```json
 {
   "loanData": {
-    "pan_number": "ABCDE1234F",
-    "full_name": "Rajesh Kumar",
-    "age": 38,
-    "phone": "9876543211",
+    "pan_number": "GOODP1234A",
+    "full_name": "Rohan Gupta",
+    "age": 35,
+    "phone": "9876543210",
     "employment_type": "Salaried",
     "monthly_income": 75000,
     "company_name": "TCS",
@@ -150,16 +157,15 @@ Request body:
     "loan_purpose": "Wedding",
     "preferred_tenure": 36,
     "existing_emi": 12000,
-    "credit_score": 820,
-    "credit_status": "Excellent payment history",
-    "active_loans": 2
+    "credit_score": 790,
+    "credit_status": "No defaults",
+    "active_loans": 1
   },
   "userId": "user-uuid-here"
 }
 ```
 
-Response (approved):
-
+**Response (Approved):**
 ```json
 {
   "success": true,
@@ -167,22 +173,18 @@ Response (approved):
   "data": {
     "approved": true,
     "sanctioned_amount": 500000,
-    "interest_rate": 10.5,
+    "interest_rate": 11.5,
     "monthly_emi": 16680,
     "tenure": 36,
-    "dti_ratio": 37.6
+    "dti_ratio": 38.24
   },
-  "message": "Congratulations Rajesh Kumar! Your loan has been APPROVED!...",
+  "message": "🎉 Congratulations Rohan Gupta! Your loan has been APPROVED!...",
   "applicationId": "uuid-of-application",
-  "policyVersion": 1,
-  "lifecycleStage": "documents_pending",
-  "riskBand": "low",
   "counterOffer": null
 }
 ```
 
-Response (rejected):
-
+**Response (Rejected):**
 ```json
 {
   "success": true,
@@ -195,174 +197,266 @@ Response (rejected):
       "Debt-to-Income ratio (55.0%) exceeds maximum allowed (50%)"
     ]
   },
-  "message": "Sorry, we're unable to approve your loan application...",
+  "message": "❌ Sorry, we're unable to approve your loan application...",
   "applicationId": "uuid-of-application",
-  "counterOffer": { "amount": 300000, "message": "We can offer up to INR 3,00,000 instead." }
+  "counterOffer": {
+    "amount": 300000,
+    "message": "We can offer up to ₹3,00,000 instead."
+  }
 }
 ```
 
-**Get application:** `GET /api/agents/underwriting?id=<application-id>`
+**Get Application:**
+```bash
+GET /api/agents/underwriting/application?id=<application-id>
+```
 
 ---
 
-## 5. Sanction Letter API
+## 5️⃣ **Document Generation API**
 
 **Endpoint:** `POST /api/agents/document`
 
-Purpose: generate a PDF sanction letter for an approved application. All letter values are read from the stored application record, never from client input. Requires a signed-in user who owns the application (or a reviewer/admin).
+**File:** `loan-agent-system/app/api/agents/document/route.ts`
 
-Request body:
+**Purpose:** Generate PDF sanction letter
 
+**Request Body:**
 ```json
-{ "applicationId": "uuid-of-application" }
+{
+  "applicationId": "APP2025001234",
+  "customerName": "Rohan Gupta",
+  "panNumber": "GOODP1234A",
+  "phone": "9876543210",
+  "sanctionedAmount": 500000,
+  "interestRate": 11.5,
+  "tenure": 36,
+  "monthlyEmi": 16680
+}
 ```
 
-Response:
-
+**Response:**
 ```
 Content-Type: application/pdf
-Content-Disposition: attachment; filename="Sanction_Letter_<id>_<name>_<timestamp>.pdf"
+Content-Disposition: attachment; filename="Sanction_Letter_APP2025001234_Rohan_Gupta_1234567890.pdf"
+
+[PDF Binary Data]
 ```
 
-**Health check:** `GET /api/agents/document`
-
----
-
-## 6. Application Documents API
-
-**Endpoint:** `POST /api/applications/documents`
-
-Purpose: register an uploaded document against an approved application. Requires the signed-in owner of the application.
-
-Request body:
-
-```json
-{
-  "applicationId": "uuid-of-application",
-  "documentType": "identity_proof",
-  "fileName": "pan-card.pdf",
-  "storagePath": "documents/app-id/pan-card.pdf"
-}
-```
-
-Response:
-
-```json
-{ "success": true, "data": { "...document record..." }, "applicationStage": "under_review" }
-```
-
-**Endpoint:** `GET /api/applications/documents?applicationId=<application-id>`
-
-Lists document records for an application. Customers see their own documents; reviewers/admins see all.
-
-**Endpoint:** `PATCH /api/applications/documents`
-
-Purpose: reviewer/admin action to verify or reject a document. Body:
-
-```json
-{
-  "applicationId": "uuid-of-application",
-  "documentId": "uuid-of-document",
-  "status": "verified",
-  "notes": "Looks good"
-}
+**Health Check:**
+```bash
+GET /api/agents/document/health
 ```
 
 ---
 
-## 7. Groq Intent API
+## 🧪 **Testing the APIs**
 
-**Endpoint:** `POST /api/groq`
+### **Using curl:**
 
-Purpose: extract intent and entities from a message using the Groq LLM. Requires `GROQ_API_KEY`.
-
-Request body:
-
-```json
-{ "message": "My PAN is ABCDE1234F and I earn 50000 a month" }
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "intent": "provide_pan",
-  "entities": { "pan_number": "ABCDE1234F", "monthly_income": 50000 },
-  "response": "Natural language reply"
-}
-```
-
-**Health check:** `GET /api/groq`
-
----
-
-## Testing with curl
-
-### Chat
-
+#### Test Chat API:
 ```bash
 curl -X POST http://localhost:3000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "I want a loan", "conversationState": {"stage": "greeting", "loan_data": {}, "messages": [], "kyc_verified": false, "credit_checked": false}}'
+  -d '{
+    "message": "I want a loan",
+    "conversationState": {
+      "stage": "greeting",
+      "loan_data": {},
+      "messages": [],
+      "kyc_verified": false,
+      "credit_checked": false
+    }
+  }'
 ```
 
-### KYC
-
+#### Test KYC API:
 ```bash
 curl -X POST http://localhost:3000/api/agents/kyc \
   -H "Content-Type: application/json" \
-  -d '{"pan": "ABCDE1234F"}'
+  -d '{"pan": "GOODP1234A"}'
 ```
 
-### Credit
-
+#### Test Credit API:
 ```bash
 curl -X POST http://localhost:3000/api/agents/credit \
   -H "Content-Type: application/json" \
-  -d '{"pan": "ABCDE1234F"}'
+  -d '{"pan": "GOODP1234A"}'
 ```
 
-### Sanction letter
-
+#### Test Document API:
 ```bash
 curl -X POST http://localhost:3000/api/agents/document \
   -H "Content-Type: application/json" \
-  -d '{"applicationId": "uuid-of-approved-application"}' \
+  -d '{
+    "applicationId": "TEST123",
+    "customerName": "Rohan Gupta",
+    "panNumber": "GOODP1234A",
+    "phone": "9876543210",
+    "sanctionedAmount": 500000,
+    "interestRate": 11.5,
+    "tenure": 36,
+    "monthlyEmi": 16680
+  }' \
   --output sanction-letter.pdf
 ```
 
----
+### **Using Postman:**
 
-## Demo PAN values
-
-| PAN | Credit score | KYC | Notes |
-|-----|-------------|-----|-------|
-| `ABCDE1234F` | 820 | VERIFIED | Strong approval candidate |
-| `GOODP1234A` | 790 | VERIFIED | Approval candidate |
-| `FGHIJ5678K` | 720 | VERIFIED | Moderate credit |
-| `BADPA0456N` | 680 | VERIFIED | Average credit |
-| `KYCFA1234K` | 760 | PENDING_AADHAAR_LINK | KYC not completed |
+1. Create a new request
+2. Set method to POST
+3. Set URL to `http://localhost:3000/api/chat`
+4. Go to Body → raw → JSON
+5. Paste the request body
+6. Click Send
 
 ---
 
-## Error codes
+## 🔒 **Authentication**
 
-| Status | Meaning |
-|--------|---------|
+Currently, the APIs work without authentication for testing. To add authentication:
+
+1. **Add middleware check:**
+```typescript
+import { createClient } from '@/lib/supabase/server';
+
+const supabase = await createClient();
+const { data: { user } } = await supabase.auth.getUser();
+
+if (!user) {
+  return NextResponse.json(
+    { error: 'Unauthorized' },
+    { status: 401 }
+  );
+}
+```
+
+2. **Pass authentication token in headers:**
+```bash
+curl -X POST http://localhost:3000/api/chat \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{...}'
+```
+
+---
+
+## 📊 **API Flow**
+
+Here's the typical flow of API calls:
+
+```
+1. User starts chat
+   POST /api/chat
+   → Response: "Please provide your PAN"
+
+2. User provides PAN
+   POST /api/chat
+   → Internally calls KYC verification
+   → Response: "PAN verified! What's your employment type?"
+
+3. User provides employment details
+   POST /api/chat
+   → Response: "What's your monthly income?"
+
+4. Continue until all data collected
+   POST /api/chat (multiple times)
+
+5. When ready, make underwriting decision
+   POST /api/agents/underwriting
+   → Response: Approved/Rejected
+
+6. If approved, generate sanction letter
+   POST /api/agents/document
+   → Response: PDF file
+```
+
+---
+
+## 🐛 **Error Codes**
+
+| Status Code | Meaning |
+|-------------|---------|
 | 200 | Success |
-| 400 | Bad request (missing/invalid data) |
-| 401 | Unauthorized (not signed in) |
-| 403 | Forbidden (insufficient role) |
-| 404 | Not found |
-| 429 | Rate limited |
-| 500 | Internal server error |
+| 400 | Bad Request (missing/invalid data) |
+| 401 | Unauthorized (not logged in) |
+| 404 | Not Found (resource doesn't exist) |
+| 500 | Internal Server Error |
 
-## Health checks
+---
+
+## 📝 **Common Errors**
+
+### Error: "Message is required"
+**Cause:** Missing `message` field in request body
+**Fix:** Include `message` in POST body
+
+### Error: "Conversation state is required"
+**Cause:** Missing `conversationState` field
+**Fix:** Include valid conversation state object
+
+### Error: "PAN not found"
+**Cause:** PAN doesn't exist in mock database
+**Fix:** Use one of these test PANs:
+- GOODP1234A
+- ABCDE1234F
+- FGHIJ5678K
+- BADPA0456N
+
+### Error: "Failed to generate sanction letter"
+**Cause:** Missing required fields for PDF generation
+**Fix:** Ensure all required fields are included in request
+
+---
+
+## ✅ **Health Check All Services**
 
 ```bash
+# Chat API
 curl http://localhost:3000/api/chat
-curl http://localhost:3000/api/agents/credit
-curl http://localhost:3000/api/agents/document
-curl http://localhost:3000/api/groq
+
+# Credit API
+curl http://localhost:3000/api/agents/credit/health
+
+# Document API
+curl http://localhost:3000/api/agents/document/health
 ```
+
+---
+
+## 📦 **File Structure**
+
+```
+loan-agent-system/app/api/
+├── chat/
+│   └── route.ts              ✅ Main chat endpoint
+└── agents/
+    ├── kyc/
+    │   └── route.ts          ✅ KYC verification
+    ├── credit/
+    │   └── route.ts          ✅ Credit check
+    ├── underwriting/
+    │   └── route.ts          ✅ Underwriting decision
+    └── document/
+        └── route.ts          ✅ PDF generation
+```
+
+---
+
+## 🎯 **Next Steps**
+
+1. ✅ All API routes created
+2. ⏳ Create frontend chat UI
+3. ⏳ Create authentication pages
+4. ⏳ Test end-to-end flow
+5. ⏳ Deploy to production
+
+---
+
+**All API routes are ready to use! Start the dev server and test them:**
+
+```bash
+npm run dev
+```
+
+Then visit: `http://localhost:3000/api/chat`
